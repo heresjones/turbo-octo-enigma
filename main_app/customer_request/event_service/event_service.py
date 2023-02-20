@@ -5,35 +5,26 @@ from botocore.exceptions import ClientError
 
 
 def lambda_handler(event, context):
-    print("Event", event)
     if not isinstance(event, dict):
         return error_400('Invalid input: event must be a dict')
 
     if event is None or 'body' not in event:
         return error_400('Invalid input: missing body')
-    # print("event TYPE", type(event))
     body = event['body']
-    # print("body TYPE 1 ", type(event['body']), event['body'])
 
     # Convert API GATEWAY RESPONSE [body][body] to a dict
     if isinstance(body, str):
         try:
-            # print("ATTEMPTING TO CONVERT")
             body = json.loads(event['body'])['body']
-            # print("body TYPE 2", type(body))
         except BaseException as e:
             return error_400('Invalid input: event body must be a dict')
 
-    # print("BODY:", body)
     if 'eventType' not in body:
         return error_400('Invalid input: missing eventType')
-    # print("BODY TYPE 3", type(body))
 
     event_type = body['eventType']
-    print("Event Type", body['eventType'])
 
     if event_type == 'getEvent':
-        print("EVENT TYPE IS GETEVENT")
         if 'eventId' not in body:
             return error_400('Invalid input: missing eventId')
         return get_event(body)
@@ -54,23 +45,15 @@ def error_400(message):
 
 
 def get_event(body):
-    if 'mode' in body:
-        print("GET EVENT CALLED", type(body), body, body['mode'])
-    else:
-        print("GET EVENT CALLED", type(body), body, "mode key not found")
-
     event_id = body['eventId']
 
     if body['mode'] != 'test':
-        print("CALLING DYNAMODB")
         return json.dumps(query_event_table(event_id))
     else:
         # Construct the path to the event file using the unit test directory
-        print("CALLING JSON FILE")
         file_path = os.path.join(os.getcwd(), 'event.json')
         with open(file_path, 'r') as f:
             file_contents = json.loads(f.read())
-            print("FILE", type(file_contents))
             response = {
                 'statusCode': 200,
                 'headers': {
@@ -79,7 +62,6 @@ def get_event(body):
                 'body': file_contents,
                 "isBase64Encoded": False
             }
-            print("RESPONSE TYPE", type(json.dumps(response)))
             return json.dumps(response)
 
 
