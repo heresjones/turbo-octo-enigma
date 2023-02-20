@@ -1,0 +1,241 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  StackName:
+    Type: String
+    Default: TicketStack
+    Description: The name of the stack
+  ServerlessDeploymentStage:
+    Type: String
+    Default: prod
+    Description: The name of the deployment stage
+
+Resources:
+  CustApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref ServerlessDeploymentStage
+      DefinitionBody:
+        swagger: '2.0'
+        info:
+          version: '1.0'
+          title: !Sub 'CustApi-${ServerlessDeploymentStage}'
+        responses:
+          'default':
+            description: Error
+            schema:
+              type: object
+          '200':
+            description: Success
+            schema:
+              type: object
+              additionalProperties: true
+          '400':
+            description: Error
+            schema:
+              type: object
+              additionalProperties: true
+        paths:
+          /session:
+            post:
+              x-amazon-apigateway-integration:
+                type: aws
+                uri:
+                  Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${SessionCache.Arn}/invocations'
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+              responses:
+                default:
+                  $ref: '#/responses/default'
+                '200':
+                  $ref: '#/responses/200'
+                '400':
+                  $ref: '#/responses/400'
+          /profile:
+            post:
+              x-amazon-apigateway-integration:
+                type: aws
+                uri:
+                  Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ProfileManager.Arn}/invocations'
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+              responses:
+                default:
+                  $ref: '#/responses/default'
+                '200':
+                  $ref: '#/responses/200'
+                '400':
+                  $ref: '#/responses/400'
+          /event:
+            post:
+              x-amazon-apigateway-integration:
+                type: aws
+                uri:
+                  Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${EventService.Arn}/invocations'
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+              responses:
+                default:
+                  $ref: '#/responses/default'
+                '200':
+                  $ref: '#/responses/200'
+                '400':
+                  $ref: '#/responses/400'
+          /finance:
+            post:
+              x-amazon-apigateway-integration:
+                type: aws
+                uri:
+                  Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${FinanceService.Arn}/invocations'
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+              responses:
+                default:
+                  $ref: '#/responses/default'
+                '200':
+                  $ref: '#/responses/200'
+                '400':
+                  $ref: '#/responses/400'
+          /ticket:
+            post:
+              x-amazon-apigateway-integration:
+                type: aws
+                uri:
+                  Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${TicketService.Arn}/invocations'
+                httpMethod: POST
+                passthroughBehavior: when_no_match
+                contentHandling: CONVERT_TO_TEXT
+              responses:
+                default:
+                  $ref: '#/responses/default'
+                '200':
+                  $ref: '#/responses/200'
+                '400':
+                  $ref: '#/responses/400'
+
+  EventTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName : 'event-table'
+      AttributeDefinitions:
+        - AttributeName: 'eventId'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'eventId'
+          KeyType: 'HASH'
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  SessionCache:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: session_cache.lambda_handler
+      Runtime: python3.9
+      CodeUri: ./main_app/customer_request/session_cache/
+      FunctionName: !Sub "SessionCache-${AWS::StackName}-${ServerlessDeploymentStage}"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /session
+            Method: POST
+
+
+  EventService:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: event_service.lambda_handler
+      Runtime: python3.9
+      CodeUri: main_app/customer_request/event_service/
+      FunctionName: !Sub "EventService-${AWS::StackName}-${ServerlessDeploymentStage}"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /event
+            Method: POST
+
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt EventService.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${CustApi}.execute-api.${AWS::Region}.amazonaws.com/${ServerlessDeploymentStage}/*/*'
+
+  FinanceService:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: finance_service.lambda_handler
+      Runtime: python3.9
+      CodeUri: main_app/customer_request/finance_service/
+      FunctionName: !Sub "FinanceService-${AWS::StackName}-${ServerlessDeploymentStage}"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /finance
+            Method: POST
+
+  NotificationService:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: notification_service.lambda_handler
+      Runtime: python3.9
+      CodeUri: main_app/customer_request/notification_service/
+      FunctionName: !Sub "NotificationService-${AWS::StackName}-${ServerlessDeploymentStage}"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /notification
+            Method: POST
+
+  ProfileManager:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: profile_manager.lambda_handler
+      Runtime: python3.9
+      CodeUri: main_app/customer_request/profile_manager/
+      FunctionName: !Sub "ProfileManager-${AWS::StackName}-${ServerlessDeploymentStage}"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /profile
+            Method: POST
+
+  TicketService:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: ticket_service.lambda_handler
+      Runtime: python3.9
+      CodeUri: main_app/customer_request/ticket_service/
+      FunctionName: !Sub "TicketService-${AWS::StackName}-${ServerlessDeploymentStage}"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /ticket
+            Method: POST
+
+#  NotifyTrigger:
+#    Type: AWS::Serverless::Function
+#    Properties:
+#      Handler: main_app.customer_request.notification_service.notify_trigger.lambda_handler
+#      Runtime: python3.9
+#      CodeUri: main_app/customer_request/notification_service/
+#      FunctionName: !Sub "NotifyTrigger-${AWS::StackName}-${ServerlessDeploymentStage}"
+#      Events:
+#        CloudWatchEvent:
+#          Type: Schedule
+#          Properties:
+#            Schedule: cron(0/5 * * * ? *)
+
+

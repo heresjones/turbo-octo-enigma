@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "TicketStack"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-12czmk8q1fe44"
+s3_prefix = "TicketStack"
+region = "us-east-1"
+profile = "dev-admin"
+capabilities = "CAPABILITY_IAM"
+image_repositories = []
