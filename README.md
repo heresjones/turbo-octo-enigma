@@ -12,16 +12,19 @@ This API retrieves information for a specific event.
 
 **Request Parameters:**
 
-| Parameter  | Required | Type   | Description         |
-| ---------- | -------- | ------ | ------------------- |
+| Parameter  | Required | Type   | Description                 |
+| ---------- | -------- | ------ |-----------------------------|
 | eventId    | Yes      | string | ID of the event to retrieve |
+| eventType | Yes | string | reason api request          |
+|mode|no|string|returns dummy test data from api|
 
 **Request Example:**
 
 ```json
 {
     "eventType": "getEvent",
-    "eventId": "123456"
+    "eventId": "123456",
+    "mode": "test"
 }
 
 ```

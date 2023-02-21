@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 
 
 def lambda_handler(event, context):
+
     if not isinstance(event, dict):
         return error_400('Invalid input: event must be a dict')
 
@@ -12,12 +13,13 @@ def lambda_handler(event, context):
         return error_400('Invalid input: missing body')
     body = event['body']
 
-    # Convert API GATEWAY RESPONSE [body][body] to a dict
+    # Convert API GATEWAY RESPONSE [body] to a dict
     if isinstance(body, str):
         try:
-            body = json.loads(event['body'])['body']
+            body = json.loads(event['body'])
         except BaseException as e:
             return error_400('Invalid input: event body must be a dict')
+
 
     if 'eventType' not in body:
         return error_400('Invalid input: missing eventType')
